@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include <fstream>
 
 /*
 Przy reskalowaniu okna metody wxwidget czêsto wyrzucaj¹ b³êdy - brak mozliwosci skalowania okna?
@@ -31,7 +32,7 @@ void Renderer::Render(wxDC* parentDC, int width, int height) {
 	DrawAxes(dc, FIELD_OF_VIEW, X_ANGLE, Y_ANGLE, Z_ANGLE);
 
 	// Temporary - chosing plane
-	int axis_plane = 2; // 1 - X axis plane, 2 - Y axis plane, 3 - Z axis plane
+	int axis_plane = 1; // 1 - X axis plane, 2 - Y axis plane, 3 - Z axis plane
 
 	// Testowanie algorytmów
 	//Test(data);
@@ -46,17 +47,20 @@ void Renderer::Render(wxDC* parentDC, int width, int height) {
 	{
 	case 1:
 		DrawXPlane(dc, FIELD_OF_VIEW, X_ANGLE, Y_ANGLE, Z_ANGLE);
+		FindLinesX(dc, data);
 		break;
 	case 2:
 		DrawYPlane(dc, FIELD_OF_VIEW, X_ANGLE, Y_ANGLE, Z_ANGLE);
+		FindLinesY(dc, data);
 		break;
 	case 3:
 		DrawZPlane(dc, FIELD_OF_VIEW, X_ANGLE, Y_ANGLE, Z_ANGLE);
+		FindLinesZ(dc, data);
 		break;
 	default:
 		break;
 	}
-
+	/*
 	if (m_cfg->isGeoLoaded())
 	{
 		for (int i = 0; i < data.size(); i++)
@@ -70,6 +74,7 @@ void Renderer::Render(wxDC* parentDC, int width, int height) {
 			dc.DrawLine(start_point.GetX(), start_point.GetY(), end_point.GetX(), end_point.GetY());
 		}
 	}
+	*/
 }
 
 Vector4 Renderer::Scale(Vector4& original)
@@ -379,6 +384,220 @@ void Renderer::UpdatePlanePos(wxBufferedDC& dc, float speed)
 		m_plane_start_pos = -2;
 		m_saving = true;
 	}
+}
+
+void Renderer::FindLinesX(wxBufferedDC& dc, std::vector<Segment>& data)
+{
+	double pos = -1.0 + (2 * m_cfg->getPos() / 100);
+
+	std::vector<Segment> cross_data;
+
+	for (int i = 0; i < data.size(); i++)
+	{
+		if (data[i].begin.y < pos && data[i].end.y > pos)
+		{
+			cross_data.push_back(data[i]);
+		}
+
+		if (data[i].end.y < pos && data[i].begin.y > pos)
+		{
+			cross_data.push_back(data[i]);
+		}
+	}
+
+	dc.SetPen(wxColor(255, 0, 0));
+
+	for (int i = 0; i < cross_data.size(); i++)
+	{
+		Vector4 start_point = Vector4(cross_data[i].begin.x, cross_data[i].begin.y, cross_data[i].begin.z);
+		Vector4 end_point = Vector4(cross_data[i].end.x, cross_data[i].end.y, cross_data[i].end.z);
+
+		start_point = TransformVector(start_point);
+		end_point = TransformVector(end_point);
+
+		dc.DrawLine(start_point.GetX(), start_point.GetY(), end_point.GetX(), end_point.GetY());
+	}
+
+	
+	std::string start_coords = "empty";
+	std::string end_coords = "empty";
+	std::string move = "empty";
+	if (m_cfg->isGeoLoaded())
+	{
+		start_coords = "x:" + std::to_string(cross_data[0].begin.x) + "   y: " + std::to_string(cross_data[0].begin.y) + "   z:" + std::to_string(cross_data[0].begin.z);
+		end_coords = "x:" + std::to_string(cross_data[0].end.x) + "   y: " + std::to_string(cross_data[0].end.y) + "   z:" + std::to_string(cross_data[0].end.z);
+
+		move = "x:" + std::to_string(cross_data[0].end.x - cross_data[0].begin.x) + "   y: " + std::to_string(cross_data[0].end.y - cross_data[0].begin.y) + "   z:" + std::to_string(cross_data[0].end.z - cross_data[0].begin.z);
+	
+	}
+
+	dc.DrawText(start_coords, 10, 10);
+	dc.DrawText(end_coords, 10, 30);
+	dc.DrawText(move, 10, 50);
+
+	std::string p_pos = "Pos: " + std::to_string(pos);
+	dc.DrawText(p_pos, 10, 70);
+
+	dc.SetPen(wxColor(0, 0, 255));
+	int text_pos = 10;
+	if (m_cfg->isGeoLoaded())
+	{
+		std::ofstream my_file_y;
+		my_file_y.open("logs_y.txt");
+
+		for (int i = 0; i < cross_data.size(); i++)
+		{
+			
+			if (cross_data[i].begin.y < pos && cross_data[i].end.y > pos)
+			{
+				double tmp_x = cross_data[i].begin.x;
+				double tmp_y = cross_data[i].begin.y;
+				double tmp_z = cross_data[i].begin.z;
+
+				cross_data[i].begin.x = cross_data[i].end.x;
+				cross_data[i].begin.y = cross_data[i].end.y;
+				cross_data[i].begin.z = cross_data[i].end.z;
+
+				cross_data[i].end.x = tmp_x;
+				cross_data[i].end.y = tmp_y;
+				cross_data[i].end.z = tmp_z;
+			}
+			
+
+			double y_distance_start = fabs(pos - cross_data[i].begin.y);
+			double y_distance_end = fabs(pos - cross_data[i].end.y);
+			double y_distance = y_distance_start + y_distance_end;
+
+			double z_distance = fabs(cross_data[i].end.z - cross_data[i].begin.z);
+			double x_distance = fabs(cross_data[i].end.x - cross_data[i].begin.x);
+
+			//dc.DrawCircle((1 + cross_data[i].begin.x + x_distance_start) * m_cfg->getSizeX() / 2, (1 + cross_data[i].begin.z + y_distance_start) * m_cfg->getSizeY() / 2, 10);
+			//dc.DrawText(std::to_string(y_distance_start), text_pos, 90);
+			//dc.DrawText(std::to_string(y_distance_end), text_pos, 110);
+
+			//std::string logs = std::to_string(y_distance_start) + " " + std::to_string(y_distance_end) + " " + std::to_string(y_distance) + "\n";
+			//std::string logs = std::to_string(cross_data[i].begin.z) + " " + std::to_string(cross_data[i].end.z) + " " + std::to_string(z_distance) + "\n";
+			//my_file_y << logs;
+
+			/*
+			double scale = y_distance_start / y_distance;
+
+			double przeciwprostokatna_xy = sqrt(pow(x_distance, 2) + pow(y_distance, 2));
+			double przeciwprostokatna_zy = sqrt(pow(z_distance, 2) + pow(y_distance, 2));
+
+			double x_distance_start = przeciwprostokatna_xy * scale;
+			double z_distance_start = przeciwprostokatna_zy * scale;
+
+			std::string logs = std::to_string(x_distance_start) + " " + std::to_string(y_distance_start) + "\n";
+			my_file_y << logs;
+
+			Vector4 cross_point = Vector4(data[i].end.x - data[i].begin.x, data[i].end.y - data[i].begin.y, data[i].end.z - data[i].begin.z);
+
+			int x_move = x_distance_start - fabs(cross_data[i].begin.x);
+			int z_move = z_distance_start - fabs(cross_data[i].begin.z);
+
+
+			dc.DrawCircle((1.0 + x_distance_start) * m_cfg->getSizeX() / 2, (1.0 + z_distance_start) * m_cfg->getSizeY(), 5);
+			*/
+
+			double scale = y_distance_start / y_distance;
+			Vector4 v = Vector4(cross_data[i].end.x - cross_data[i].begin.x, cross_data[i].end.y - cross_data[i].begin.y, cross_data[i].end.z - cross_data[i].begin.z);
+			//std::string logs = std::to_string(v.GetX()) + " " + std::to_string(v.GetY()) + " " + std::to_string(v.GetZ()) + "\n";
+			std::string logs = std::to_string(cross_data[i].begin.y) + " " + std::to_string(cross_data[i].begin.y) + " " + std::to_string(cross_data[i].begin.y) + "\n";
+			v.Set(v.GetX() * scale, v.GetY() * scale, v.GetZ() * scale);
+			
+			Vector4 cross_point = Vector4(cross_data[i].begin.x + v.GetX(), cross_data[i].begin.y + v.GetY(), cross_data[i].begin.z + v.GetZ());
+
+			//std::string logs = std::to_string(cross_point.GetX()) + " " + std::to_string(cross_point.GetY()) + " " + std::to_string(cross_point.GetZ()) + "\n";
+
+			dc.DrawCircle((1.0 + cross_point.GetX())* m_cfg->getSizeX() / 2, (1.0 + cross_point.GetZ())* m_cfg->getSizeY() / 2, 5);
+			my_file_y << logs;
+			text_pos += 50;
+		}
+
+		my_file_y.close();
+		
+	}
+	
+	if (m_cfg->isGeoLoaded())
+	{
+		for (int i = 0; i < cross_data.size(); i++)
+		{
+			//dc.DrawCircle((1 + cross_data[i].begin.x) * m_cfg->getSizeX() / 2, (1 + cross_data[i].begin.z) * m_cfg->getSizeY() / 2, 10);
+		}
+	}
+	
+	dc.SetPen(wxColor(0, 0, 0));
+}
+
+void Renderer::FindLinesY(wxBufferedDC& dc, std::vector<Segment>& data)
+{
+	double pos = -1.0 + (2 * m_cfg->getPos() / 100);
+
+	std::vector<Segment> cross_data;
+
+	for (int i = 0; i < data.size(); i++)
+	{
+		if (data[i].begin.z < pos && data[i].end.z > pos)
+		{
+			cross_data.push_back(data[i]);
+		}
+
+		if (data[i].end.z < pos && data[i].begin.z > pos)
+		{
+			cross_data.push_back(data[i]);
+		}
+	}
+
+	dc.SetPen(wxColor(255, 0, 0));
+
+	for (int i = 0; i < cross_data.size(); i++)
+	{
+		Vector4 start_point = Vector4(cross_data[i].begin.x, cross_data[i].begin.y, cross_data[i].begin.z);
+		Vector4 end_point = Vector4(cross_data[i].end.x, cross_data[i].end.y, cross_data[i].end.z);
+
+		start_point = TransformVector(start_point);
+		end_point = TransformVector(end_point);
+
+		dc.DrawLine(start_point.GetX(), start_point.GetY(), end_point.GetX(), end_point.GetY());
+	}
+
+	dc.SetPen(wxColor(0, 0, 0));
+}
+
+void Renderer::FindLinesZ(wxBufferedDC& dc, std::vector<Segment>& data)
+{
+	double pos = -1.0 + (2 * m_cfg->getPos() / 100);
+
+	std::vector<Segment> cross_data;
+
+	for (int i = 0; i < data.size(); i++)
+	{
+		if (data[i].begin.y < pos && data[i].end.y > pos)
+		{
+			cross_data.push_back(data[i]);
+		}
+
+		if (data[i].end.y < pos && data[i].begin.y > pos)
+		{
+			cross_data.push_back(data[i]);
+		}
+	}
+
+	dc.SetPen(wxColor(255, 0, 0));
+
+	for (int i = 0; i < cross_data.size(); i++)
+	{
+		Vector4 start_point = Vector4(cross_data[i].begin.x, cross_data[i].begin.y, cross_data[i].begin.z);
+		Vector4 end_point = Vector4(cross_data[i].end.x, cross_data[i].end.y, cross_data[i].end.z);
+
+		start_point = TransformVector(start_point);
+		end_point = TransformVector(end_point);
+
+		dc.DrawLine(start_point.GetX(), start_point.GetY(), end_point.GetX(), end_point.GetY());
+	}
+
+	dc.SetPen(wxColor(0, 0, 0));
 }
 
 void Renderer::Test(std::vector<Segment>& data)

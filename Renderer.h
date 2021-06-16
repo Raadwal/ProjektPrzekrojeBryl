@@ -31,6 +31,9 @@ private:
   void UpdatePlanePos(wxBufferedDC& dc, float speed);
 
   //Testowanie algorytmów do obcinania bry³
+  void FindLinesX(wxBufferedDC& dc, std::vector<Segment>& data);
+  void FindLinesY(wxBufferedDC& dc, std::vector<Segment>& data);
+  void FindLinesZ(wxBufferedDC& dc, std::vector<Segment>& data);
   void Test(std::vector<Segment>& data); 
   void Test2(std::vector<Segment>& data, int axis_plane);
   void Test3(std::vector<Segment>& data);
