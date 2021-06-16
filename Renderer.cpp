@@ -447,7 +447,7 @@ void Renderer::FindLinesX(wxBufferedDC& dc, std::vector<Segment>& data)
 
 		for (int i = 0; i < cross_data.size(); i++)
 		{
-			
+			//Zamiana miejscamy punktów cross_data[i].begin zawsze nad p³aszczyzna
 			if (cross_data[i].begin.y < pos && cross_data[i].end.y > pos)
 			{
 				double tmp_x = cross_data[i].begin.x;
@@ -471,41 +471,16 @@ void Renderer::FindLinesX(wxBufferedDC& dc, std::vector<Segment>& data)
 			double z_distance = fabs(cross_data[i].end.z - cross_data[i].begin.z);
 			double x_distance = fabs(cross_data[i].end.x - cross_data[i].begin.x);
 
-			//dc.DrawCircle((1 + cross_data[i].begin.x + x_distance_start) * m_cfg->getSizeX() / 2, (1 + cross_data[i].begin.z + y_distance_start) * m_cfg->getSizeY() / 2, 10);
-			//dc.DrawText(std::to_string(y_distance_start), text_pos, 90);
-			//dc.DrawText(std::to_string(y_distance_end), text_pos, 110);
-
-			//std::string logs = std::to_string(y_distance_start) + " " + std::to_string(y_distance_end) + " " + std::to_string(y_distance) + "\n";
-			//std::string logs = std::to_string(cross_data[i].begin.z) + " " + std::to_string(cross_data[i].end.z) + " " + std::to_string(z_distance) + "\n";
-			//my_file_y << logs;
-
-			/*
-			double scale = y_distance_start / y_distance;
-
-			double przeciwprostokatna_xy = sqrt(pow(x_distance, 2) + pow(y_distance, 2));
-			double przeciwprostokatna_zy = sqrt(pow(z_distance, 2) + pow(y_distance, 2));
-
-			double x_distance_start = przeciwprostokatna_xy * scale;
-			double z_distance_start = przeciwprostokatna_zy * scale;
-
-			std::string logs = std::to_string(x_distance_start) + " " + std::to_string(y_distance_start) + "\n";
-			my_file_y << logs;
-
-			Vector4 cross_point = Vector4(data[i].end.x - data[i].begin.x, data[i].end.y - data[i].begin.y, data[i].end.z - data[i].begin.z);
-
-			int x_move = x_distance_start - fabs(cross_data[i].begin.x);
-			int z_move = z_distance_start - fabs(cross_data[i].begin.z);
-
-
-			dc.DrawCircle((1.0 + x_distance_start) * m_cfg->getSizeX() / 2, (1.0 + z_distance_start) * m_cfg->getSizeY(), 5);
-			*/
-
-			double scale = y_distance_start / y_distance;
+			// (dystans miedzy punktem pocz¹tkowym, a wartoœci¹ y p³aszczyzny) / (dystans miêdzy dwoma punktami)
+			double scale = y_distance_start / y_distance; 
+			// Odlegloœæ miêdzy dwoma punktami (x, y, z)
 			Vector4 v = Vector4(cross_data[i].end.x - cross_data[i].begin.x, cross_data[i].end.y - cross_data[i].begin.y, cross_data[i].end.z - cross_data[i].begin.z);
 			//std::string logs = std::to_string(v.GetX()) + " " + std::to_string(v.GetY()) + " " + std::to_string(v.GetZ()) + "\n";
 			std::string logs = std::to_string(cross_data[i].begin.y) + " " + std::to_string(cross_data[i].begin.y) + " " + std::to_string(cross_data[i].begin.y) + "\n";
+			// Przeskalowanie odleg³oœci miêdzy dwoma punktami 
 			v.Set(v.GetX() * scale, v.GetY() * scale, v.GetZ() * scale);
 			
+			// Dodanie przeskalowanej odleg³oœci do punktu pocz¹tkowego
 			Vector4 cross_point = Vector4(cross_data[i].begin.x + v.GetX(), cross_data[i].begin.y + v.GetY(), cross_data[i].begin.z + v.GetZ());
 
 			//std::string logs = std::to_string(cross_point.GetX()) + " " + std::to_string(cross_point.GetY()) + " " + std::to_string(cross_point.GetZ()) + "\n";
